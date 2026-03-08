@@ -817,6 +817,69 @@ async def delete_entity(
         raise NotFoundError(f"Entity '{entity_id}' not found")
 
 
+async def batch_create_entities(
+    ontology_key: str,
+    entity_type_key: str,
+    items: list[dict],
+    driver: AsyncDriver,
+) -> list[dict]:
+    """Create multiple entity instances of the same type in a single batch.
+
+    Validates all items first. If any fail, the entire batch is rejected.
+    """
+    from ontoforge_server.runtime.schemas import BATCH_MAX_ITEMS
+
+    cache = await _load_schema(ontology_key, driver)
+    et_def = cache.entity_types.get(entity_type_key)
+    if not et_def:
+        raise NotFoundError(f"Entity type '{entity_type_key}' not found")
+
+    if not items:
+        raise ValidationError("Batch must contain at least 1 item")
+    if len(items) > BATCH_MAX_ITEMS:
+        raise ValidationError(f"Batch size exceeds limit of {BATCH_MAX_ITEMS} items")
+
+    # Validate all items, collecting errors by index
+    all_coerced: list[dict] = []
+    item_errors: dict[str, dict] = {}
+
+    for i, item in enumerate(items):
+        coerced, errors = validate_properties(item, et_def.properties, entity_type_key)
+        if errors:
+            item_errors[str(i)] = {"fields": errors}
+        all_coerced.append(coerced)
+
+    if item_errors:
+        raise ValidationError(
+            "Batch validation failed",
+            details={"items": item_errors},
+        )
+
+    pascal_label = to_pascal_case(entity_type_key)
+    provider = get_embedding_provider()
+
+    # Build repository items: id, properties, embedding
+    repo_items = []
+    for coerced in all_coerced:
+        entity_id = str(uuid4())
+        embedding = None
+        if provider:
+            text = build_text_repr(entity_type_key, coerced, et_def.properties)
+            embedding = await provider.embed(text)
+        repo_items.append({
+            "id": entity_id,
+            "properties": coerced,
+            "embedding": embedding,
+        })
+
+    async with driver.session() as session:
+        entities = await repository.batch_create_entities(
+            session, entity_type_key, pascal_label, repo_items,
+        )
+
+    return entities
+
+
 # ---------------------------------------------------------------------------
 # Service Functions — Relation Instance CRUD
 # ---------------------------------------------------------------------------
