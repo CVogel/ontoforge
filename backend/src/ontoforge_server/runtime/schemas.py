@@ -62,3 +62,11 @@ class FeaturesResponse(BaseModel):
     semantic_search: bool = Field(alias="semanticSearch")
 
     model_config = {"populate_by_name": True}
+
+
+BATCH_MAX_ITEMS = 100
+
+
+class BatchCreateResponse(BaseModel):
+    created: list[dict]
+    count: int
