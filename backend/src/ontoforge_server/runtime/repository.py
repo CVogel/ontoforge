@@ -340,6 +340,18 @@ async def batch_create_entities(
 # --- Relation Instance CRUD ---
 
 
+async def batch_get_entities_by_ids(
+    session: AsyncSession,
+    entity_ids: list[str],
+) -> list[dict]:
+    """Get multiple entities by ID in a single query. Returns list of dicts with _id and _entityTypeKey."""
+    result = await session.run(
+        "MATCH (n:_Entity) WHERE n._id IN $ids RETURN n._id AS _id, n._entityTypeKey AS _entityTypeKey",
+        ids=entity_ids,
+    )
+    return [{"_id": record["_id"], "_entityTypeKey": record["_entityTypeKey"]} async for record in result]
+
+
 async def get_entity_by_id(session: AsyncSession, entity_id: str) -> dict | None:
     """Get any entity by _id (regardless of type label)."""
     result = await session.run(
@@ -386,6 +398,44 @@ async def create_relation(
     rel["fromEntityId"] = record["fromEntityId"]
     rel["toEntityId"] = record["toEntityId"]
     return rel
+
+
+async def batch_create_relations(
+    session: AsyncSession,
+    relation_type_key: str,
+    rel_type_upper: str,
+    items: list[dict],
+) -> list[dict]:
+    """Create multiple relation instances in a single UNWIND query.
+
+    Each item in `items` must have keys: id, fromEntityId, toEntityId, properties.
+    """
+    result = await session.run(
+        f"""
+        UNWIND $items AS item
+        MATCH (from:_Entity {{_id: item.fromEntityId}})
+        MATCH (to:_Entity {{_id: item.toEntityId}})
+        CREATE (from)-[r:{rel_type_upper} {{
+            _id: item.id,
+            _relationTypeKey: $relation_type_key,
+            _createdAt: datetime(),
+            _updatedAt: datetime()
+        }}]->(to)
+        SET r += item.properties
+        RETURN r {{.*}} AS relation,
+               from._id AS fromEntityId,
+               to._id AS toEntityId
+        """,
+        relation_type_key=relation_type_key,
+        items=items,
+    )
+    results = []
+    async for record in result:
+        rel = _convert_neo4j_types(record["relation"])
+        rel["fromEntityId"] = record["fromEntityId"]
+        rel["toEntityId"] = record["toEntityId"]
+        results.append(rel)
+    return results
 
 
 async def list_relations(
