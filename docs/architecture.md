@@ -446,12 +446,14 @@ The runtime API is generic and schema-driven — endpoints use type keys from th
 | `GET` | `/api/runtime/{ontologyKey}/schema/relation-types` | List relation types |
 | `GET` | `/api/runtime/{ontologyKey}/schema/relation-types/{key}` | Get relation type with properties |
 | `POST` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}` | Create entity instance |
+| `POST` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/batch` | Batch create entity instances |
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}` | List/search entity instances |
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}` | Get entity instance |
 | `PATCH` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}` | Partial update entity instance |
 | `DELETE` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}` | Delete entity instance |
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}/neighbors` | Graph traversal |
 | `POST` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}` | Create relation instance |
+| `POST` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/batch` | Batch create relation instances |
 | `GET` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}` | List relation instances |
 | `GET` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/{id}` | Get relation instance |
 | `PATCH` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/{id}` | Partial update relation instance |

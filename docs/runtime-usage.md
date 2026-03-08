@@ -148,7 +148,31 @@ curl -X DELETE http://localhost:8000/api/runtime/test_ontology/relations/works_f
 
 Only the relationship is removed; the connected entities are unaffected.
 
-## 4. Filtering and Search
+## 4. Batch Operations
+
+Create multiple entities or relations in a single request (max 100 items). All items are validated first — if any fail, the entire batch is rejected.
+
+### Batch Create Entities
+
+```bash
+curl -X POST http://localhost:8000/api/runtime/test_ontology/entities/person/batch \
+  -H 'Content-Type: application/json' \
+  -d '{"items": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}'
+```
+
+Response: `{"created": [...], "count": 2}`
+
+### Batch Create Relations
+
+```bash
+curl -X POST http://localhost:8000/api/runtime/test_ontology/relations/works_for/batch \
+  -H 'Content-Type: application/json' \
+  -d '{"items": [{"fromEntityId": "<person-id-1>", "toEntityId": "<company-id>", "role": "Engineer"}, {"fromEntityId": "<person-id-2>", "toEntityId": "<company-id>", "role": "Designer"}]}'
+```
+
+Response: `{"created": [...], "count": 2}`
+
+## 5. Filtering and Search
 
 These query parameters work on entity and relation list endpoints.
 
@@ -200,7 +224,7 @@ The `q` parameter searches all string properties (case-insensitive substring mat
 curl "http://localhost:8000/api/runtime/test_ontology/entities/person?q=alice"
 ```
 
-## 5. Data Management
+## 6. Data Management
 
 Wipe all instance data for an ontology (entities and relations). Schema is preserved.
 
@@ -210,7 +234,7 @@ curl -X DELETE http://localhost:8000/api/runtime/test_ontology/data
 
 Response: `{ "ontologyKey": "test_ontology", "entitiesDeleted": 150, "relationsDeleted": 42 }`
 
-## 6. Validation Errors
+## 7. Validation Errors
 
 Write operations that fail validation return 422 with field-level details:
 

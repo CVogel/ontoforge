@@ -248,7 +248,7 @@ Properties are managed through unified tools that work on both entity types and 
 | `export_schema` | — | JSON export payload | Export the full ontology schema in OntoForge transfer format. |
 | `import_schema` | `payload` (JSON object), `overwrite` (opt, default false) | Imported ontology | Import a schema from a JSON payload into the current ontology. With `overwrite=true`, replaces the existing schema. |
 
-### 3.2 Runtime MCP Tools (13 tools)
+### 3.2 Runtime MCP Tools (15 tools)
 
 #### Schema Introspection
 
@@ -265,6 +265,13 @@ Properties are managed through unified tools that work on both entity types and 
 | `get_entity` | `entity_type_key`, `entity_id` | Single entity instance | Retrieve a specific entity by its `_id`. |
 | `update_entity` | `entity_type_key`, `entity_id`, `properties` (object) | Updated entity instance | Partial update — only provided properties change. Set a property to `null` to remove it (fails for required properties). |
 | `delete_entity` | `entity_type_key`, `entity_id` | Confirmation | Delete an entity and all its connected relations. |
+
+#### Batch Operations
+
+| Tool | Arguments | Returns | Description |
+|------|-----------|---------|-------------|
+| `batch_create_entities` | `entity_type_key`, `items` (list of property objects, max 100) | `{created: [...], count: N}` | Create multiple entities of the same type in a single batch. All items validated first — if any fail, the entire batch is rejected. |
+| `batch_create_relations` | `relation_type_key`, `items` (list of objects with `fromEntityId`, `toEntityId`, and optional properties, max 100) | `{created: [...], count: N}` | Create multiple relations of the same type in a single batch. Entity existence and type matching validated in batch. |
 
 #### Relation Operations
 

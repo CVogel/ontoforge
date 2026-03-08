@@ -349,7 +349,96 @@ Delete a relation instance. Only the relationship is removed; the connected enti
 
 ---
 
-## 5. Graph Traversal
+## 5. Batch Operations
+
+Batch endpoints accept multiple items and create them in a single database transaction. All items are validated before any writes occur — if any item fails validation, the entire batch is rejected.
+
+Maximum batch size: 100 items per request.
+
+### POST /api/runtime/{ontologyKey}/entities/{entityTypeKey}/batch
+
+Create multiple entity instances of the same type.
+
+**Request body:**
+```json
+{
+  "items": [
+    {"name": "Alice", "age": 30},
+    {"name": "Bob", "age": 25}
+  ]
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "created": [
+    {
+      "_id": "b7e3f1a2-...",
+      "_entityTypeKey": "person",
+      "_createdAt": "2026-03-08T10:00:00Z",
+      "_updatedAt": "2026-03-08T10:00:00Z",
+      "name": "Alice",
+      "age": 30
+    },
+    {
+      "_id": "c8d4e2b3-...",
+      "_entityTypeKey": "person",
+      "_createdAt": "2026-03-08T10:00:00Z",
+      "_updatedAt": "2026-03-08T10:00:00Z",
+      "name": "Bob",
+      "age": 25
+    }
+  ],
+  "count": 2
+}
+```
+
+**Validation:** Same per-item rules as single entity creation. Errors are collected per item and returned with item indices:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Batch validation failed",
+    "details": {
+      "items": {
+        "1": {
+          "fields": {
+            "name": "Required property missing"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Errors:** 404 if entity type not found. 422 if validation fails or batch size exceeded.
+
+### POST /api/runtime/{ontologyKey}/relations/{relationTypeKey}/batch
+
+Create multiple relation instances of the same type.
+
+**Request body:**
+```json
+{
+  "items": [
+    {"fromEntityId": "b7e3f1a2-...", "toEntityId": "a1b2c3d4-...", "role": "Engineer"},
+    {"fromEntityId": "c8d4e2b3-...", "toEntityId": "a1b2c3d4-...", "role": "Designer"}
+  ]
+}
+```
+
+**Response:** `201 Created` — same shape as batch entity response, with relation instances including `fromEntityId` and `toEntityId`.
+
+**Validation:** Same per-item rules as single relation creation. Entity existence and type matching are checked in a single batch query.
+
+**Errors:** 404 if relation type not found. 422 if validation fails or batch size exceeded.
+
+---
+
+## 6. Graph Traversal
 
 ### GET /api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}/neighbors
 
@@ -400,7 +489,7 @@ This is the primary exploration endpoint for MCP clients. Given an entity, disco
 
 ---
 
-## 6. Semantic Search
+## 7. Semantic Search
 
 ### GET /api/runtime/{ontologyKey}/search/semantic
 
@@ -456,7 +545,7 @@ Requires `EMBEDDING_PROVIDER` to be configured. When embedding is disabled, retu
 
 ---
 
-## 7. Error Responses
+## 8. Error Responses
 
 The runtime API reuses the same error format as the modeling API (see `architecture.md` §5.1).
 
@@ -480,7 +569,7 @@ The runtime API reuses the same error format as the modeling API (see `architect
 
 ---
 
-## 8. Feature Discovery
+## 9. Feature Discovery
 
 ### GET /api/runtime/features
 
@@ -503,7 +592,7 @@ This endpoint is useful for frontend feature detection — clients can check whi
 
 ---
 
-## 9. Endpoint Summary
+## 10. Endpoint Summary
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -515,6 +604,7 @@ This endpoint is useful for frontend feature detection — clients can check whi
 | `GET` | `/api/runtime/{ontologyKey}/schema/relation-types` | List relation types |
 | `GET` | `/api/runtime/{ontologyKey}/schema/relation-types/{key}` | Get relation type with properties |
 | `POST` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}` | Create entity instance |
+| `POST` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/batch` | Batch create entity instances |
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}` | List/search entity instances |
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}` | Get entity instance |
 | `PATCH` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}` | Partial update entity instance |
@@ -522,6 +612,7 @@ This endpoint is useful for frontend feature detection — clients can check whi
 | `GET` | `/api/runtime/{ontologyKey}/entities/{entityTypeKey}/{id}/neighbors` | Graph traversal |
 | `GET` | `/api/runtime/{ontologyKey}/search/semantic` | Semantic search over entity instances |
 | `POST` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}` | Create relation instance |
+| `POST` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/batch` | Batch create relation instances |
 | `GET` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}` | List relation instances |
 | `GET` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/{id}` | Get relation instance |
 | `PATCH` | `/api/runtime/{ontologyKey}/relations/{relationTypeKey}/{id}` | Partial update relation instance |
