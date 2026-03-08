@@ -880,6 +880,126 @@ async def batch_create_entities(
     return entities
 
 
+async def batch_create_relations(
+    ontology_key: str,
+    relation_type_key: str,
+    items: list[dict],
+    driver: AsyncDriver,
+) -> list[dict]:
+    """Create multiple relation instances of the same type in a single batch.
+
+    Validates all items first. If any fail, the entire batch is rejected.
+    """
+    from ontoforge_server.runtime.schemas import BATCH_MAX_ITEMS
+
+    cache = await _load_schema(ontology_key, driver)
+    rt_def = cache.relation_types.get(relation_type_key)
+    if not rt_def:
+        raise NotFoundError(f"Relation type '{relation_type_key}' not found")
+
+    if not items:
+        raise ValidationError("Batch must contain at least 1 item")
+    if len(items) > BATCH_MAX_ITEMS:
+        raise ValidationError(f"Batch size exceeds limit of {BATCH_MAX_ITEMS} items")
+
+    # Phase 1: Validate structure and properties per item
+    item_errors: dict[str, dict] = {}
+    all_entity_ids: set[str] = set()
+    parsed_items: list[dict] = []
+
+    for i, item in enumerate(items):
+        errors: dict[str, str] = {}
+        from_id = item.get("fromEntityId")
+        to_id = item.get("toEntityId")
+
+        if not from_id:
+            errors["fromEntityId"] = "fromEntityId is required"
+        if not to_id:
+            errors["toEntityId"] = "toEntityId is required"
+
+        # Extract user properties (everything except fromEntityId/toEntityId)
+        user_props = {k: v for k, v in item.items() if k not in ("fromEntityId", "toEntityId")}
+        coerced, prop_errors = validate_properties(user_props, rt_def.properties, relation_type_key)
+        errors.update({"fields": prop_errors} if prop_errors else {})
+
+        if errors:
+            # Flatten: if only "fields" key, use it directly; otherwise wrap
+            if "fields" in errors and len(errors) == 1:
+                item_errors[str(i)] = errors
+            else:
+                # Mix of field errors and structural errors
+                field_errs = errors.pop("fields", {})
+                field_errs.update({k: v for k, v in errors.items()})
+                item_errors[str(i)] = {"fields": field_errs} if field_errs else errors
+
+        if from_id:
+            all_entity_ids.add(from_id)
+        if to_id:
+            all_entity_ids.add(to_id)
+
+        parsed_items.append({
+            "from_id": from_id,
+            "to_id": to_id,
+            "coerced": coerced,
+        })
+
+    # Phase 2: Batch-verify all referenced entities exist and have correct types
+    if all_entity_ids and not item_errors:
+        async with driver.session() as session:
+            found_entities = await repository.batch_get_entities_by_ids(
+                session, list(all_entity_ids),
+            )
+        entity_map = {e["_id"]: e["_entityTypeKey"] for e in found_entities}
+
+        for i, parsed in enumerate(parsed_items):
+            errors = {}
+            from_id = parsed["from_id"]
+            to_id = parsed["to_id"]
+
+            if from_id and from_id not in entity_map:
+                errors["fromEntityId"] = f"Source entity '{from_id}' not found"
+            elif from_id and entity_map.get(from_id) != rt_def.from_entity_type_key:
+                errors["fromEntityId"] = (
+                    f"Source entity type mismatch: expected '{rt_def.from_entity_type_key}', "
+                    f"got '{entity_map[from_id]}'"
+                )
+
+            if to_id and to_id not in entity_map:
+                errors["toEntityId"] = f"Target entity '{to_id}' not found"
+            elif to_id and entity_map.get(to_id) != rt_def.to_entity_type_key:
+                errors["toEntityId"] = (
+                    f"Target entity type mismatch: expected '{rt_def.to_entity_type_key}', "
+                    f"got '{entity_map[to_id]}'"
+                )
+
+            if errors:
+                item_errors[str(i)] = errors
+
+    if item_errors:
+        raise ValidationError(
+            "Batch validation failed",
+            details={"items": item_errors},
+        )
+
+    # Phase 3: Build repo items and create
+    rel_type_upper = to_upper_snake_case(relation_type_key)
+    repo_items = []
+    for parsed in parsed_items:
+        repo_items.append({
+            "id": str(uuid4()),
+            "fromEntityId": parsed["from_id"],
+            "toEntityId": parsed["to_id"],
+            "properties": parsed["coerced"],
+        })
+
+    async with driver.session() as session:
+        relations = await repository.batch_create_relations(
+            session, relation_type_key, rel_type_upper, repo_items,
+        )
+
+    return relations
+
+
 # ---------------------------------------------------------------------------
 # Service Functions — Relation Instance CRUD
 # ---------------------------------------------------------------------------
