@@ -49,3 +49,6 @@ neo4j/logs/
 
 # Temporary working files (not committed)
 .tmp/
+
+# Git worktrees
+.worktrees/
