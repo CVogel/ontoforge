@@ -207,6 +207,21 @@ async def create_relation(
     return await service.create_relation(ontology_key, relation_type_key, body, driver)
 
 
+@router.post("/relations/{relation_type_key}/batch", status_code=201)
+async def batch_create_relations(
+    ontology_key: str,
+    relation_type_key: str,
+    request: Request,
+    driver: AsyncDriver = Depends(get_driver),
+):
+    body = await request.json()
+    items = body.get("items", [])
+    relations = await service.batch_create_relations(
+        ontology_key, relation_type_key, items, driver
+    )
+    return {"created": relations, "count": len(relations)}
+
+
 @router.get("/relations/{relation_type_key}", response_model=PaginatedResponse)
 async def list_relations(
     ontology_key: str,
