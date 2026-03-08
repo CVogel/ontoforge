@@ -89,6 +89,23 @@ async def create_entity(
 
 @runtime_mcp.tool()
 @_enrich_errors
+async def batch_create_entities(
+    entity_type_key: str,
+    items: list[dict],
+) -> dict:
+    """Create multiple entities of the same type in a single batch (max 100).
+    Each item is a property dict matching the schema. All items are validated
+    first — if any fail, the entire batch is rejected with per-item errors."""
+    ontology_key = _get_ontology_key()
+    driver = await get_driver()
+    entities = await service.batch_create_entities(
+        ontology_key, entity_type_key, items, driver
+    )
+    return {"created": entities, "count": len(entities)}
+
+
+@runtime_mcp.tool()
+@_enrich_errors
 async def list_entities(
     entity_type_key: str,
     search: str | None = None,
@@ -187,6 +204,23 @@ async def create_relation(
         ontology_key, relation_type_key, body, driver
     )
     return result
+
+
+@runtime_mcp.tool()
+@_enrich_errors
+async def batch_create_relations(
+    relation_type_key: str,
+    items: list[dict],
+) -> dict:
+    """Create multiple relations of the same type in a single batch (max 100).
+    Each item must have fromEntityId, toEntityId, and optional properties.
+    All items are validated first — if any fail, the entire batch is rejected."""
+    ontology_key = _get_ontology_key()
+    driver = await get_driver()
+    relations = await service.batch_create_relations(
+        ontology_key, relation_type_key, items, driver
+    )
+    return {"created": relations, "count": len(relations)}
 
 
 @runtime_mcp.tool()
