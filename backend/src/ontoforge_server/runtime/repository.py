@@ -305,6 +305,38 @@ async def delete_entity(
     return record["deleted"] > 0
 
 
+async def batch_create_entities(
+    session: AsyncSession,
+    entity_type_key: str,
+    pascal_label: str,
+    items: list[dict],
+) -> list[dict]:
+    """Create multiple entity instances in a single UNWIND query.
+
+    Each item in `items` must have keys: id, properties, embedding (or None).
+    """
+    result = await session.run(
+        f"""
+        UNWIND $items AS item
+        CREATE (n:_Entity:{pascal_label} {{
+            _id: item.id,
+            _entityTypeKey: $entity_type_key,
+            _createdAt: datetime(),
+            _updatedAt: datetime()
+        }})
+        SET n += item.properties
+        FOREACH (_ IN CASE WHEN item.embedding IS NOT NULL THEN [1] ELSE [] END |
+            SET n._embedding = item.embedding
+        )
+        RETURN n {{.*}} AS entity
+        """,
+        entity_type_key=entity_type_key,
+        items=items,
+    )
+    records = [record async for record in result]
+    return [_strip_embedding(_convert_neo4j_types(r["entity"])) for r in records]
+
+
 # --- Relation Instance CRUD ---
 
 
