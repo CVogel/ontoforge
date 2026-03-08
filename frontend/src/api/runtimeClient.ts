@@ -5,6 +5,7 @@ import type {
   PaginatedResponse,
   FeaturesResponse,
   SemanticSearchResponse,
+  BatchCreateResponse,
 } from '../types/runtime';
 import { request as baseRequest } from './request';
 
@@ -50,6 +51,12 @@ export const listEntities = (ontologyKey: string, entityTypeKey: string, params?
 export const createEntity = (ontologyKey: string, entityTypeKey: string, data: Record<string, unknown>) =>
   request<EntityInstance>(`/${ontologyKey}/entities/${entityTypeKey}`, { method: 'POST', body: JSON.stringify(data) });
 
+export const batchCreateEntities = (ontologyKey: string, entityTypeKey: string, items: Record<string, unknown>[]) =>
+  request<BatchCreateResponse<EntityInstance>>(`/${ontologyKey}/entities/${entityTypeKey}/batch`, {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+
 export const getEntity = (ontologyKey: string, entityTypeKey: string, id: string) =>
   request<EntityInstance>(`/${ontologyKey}/entities/${entityTypeKey}/${id}`);
 
@@ -92,6 +99,12 @@ export const listRelations = (ontologyKey: string, relationTypeKey: string, para
 
 export const createRelation = (ontologyKey: string, relationTypeKey: string, data: Record<string, unknown>) =>
   request<RelationInstance>(`/${ontologyKey}/relations/${relationTypeKey}`, { method: 'POST', body: JSON.stringify(data) });
+
+export const batchCreateRelations = (ontologyKey: string, relationTypeKey: string, items: Record<string, unknown>[]) =>
+  request<BatchCreateResponse<RelationInstance>>(`/${ontologyKey}/relations/${relationTypeKey}/batch`, {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
 
 export const getRelation = (ontologyKey: string, relationTypeKey: string, id: string) =>
   request<RelationInstance>(`/${ontologyKey}/relations/${relationTypeKey}/${id}`);

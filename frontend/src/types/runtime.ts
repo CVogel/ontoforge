@@ -79,3 +79,9 @@ export interface SemanticSearchResponse {
   query: string;
   total: number;
 }
+
+// Batch operations
+export interface BatchCreateResponse<T> {
+  created: T[];
+  count: number;
+}
