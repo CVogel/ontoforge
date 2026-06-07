@@ -607,6 +607,7 @@ def _validate_sort_field(sort: str, property_defs: dict[str, PropertyDef]) -> st
         "updatedAt": "_updatedAt",
         "_createdAt": "_createdAt",
         "_updatedAt": "_updatedAt",
+        "_id": "_id",
     }
     if sort in SYSTEM_SORT_FIELDS:
         return SYSTEM_SORT_FIELDS[sort]
