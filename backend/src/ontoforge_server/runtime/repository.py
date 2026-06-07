@@ -214,7 +214,7 @@ async def list_entities(
     data_query = f"""
         MATCH (n:_Entity:{pascal_label}) {where_str}
         RETURN n {{.*}} AS entity
-        ORDER BY n.{sort_field} {order}
+        ORDER BY n.{sort_field} {order}, elementId(n)
         SKIP $offset LIMIT $limit
     """
     params["offset"] = offset
@@ -478,7 +478,7 @@ async def list_relations(
         RETURN r {{.*}} AS relation,
                from._id AS fromEntityId,
                to._id AS toEntityId
-        ORDER BY r.{sort_field} {order}
+        ORDER BY r.{sort_field} {order}, elementId(r)
         SKIP $offset LIMIT $limit
     """
     params["offset"] = offset
